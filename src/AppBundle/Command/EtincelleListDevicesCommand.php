@@ -45,6 +45,7 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
             $output->writeln(sprintf('<error>Access denied to %s (with username = %s, password = %s)</error>', $host, $login, $password));
         } else {
             $devices = array();
+            $result = array();
             $client->request('GET', sprintf('http://%s/update_networkmapd.asp', $host));
             if (preg_match("/^﻿fromNetworkmapd = '([^']+)'/", $client->getResponse()->getContent(), $tokens)) {
                 $items = explode('<0>', $tokens[1]);
@@ -52,7 +53,7 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
                 foreach ($items as $item) {
                     if (preg_match('/^([^>]+)>([^>]+)>([^>]+)>([^>]+)>([^>]+)>([^>]+)>$/', $item, $tokens)) {
                         //      print_r($tokens);
-                        $devices[] = array(
+                        $devices[$tokens[3]] = array(
                             'name' => $tokens[1],
 //                        'ip' => $tokens[2],
                             'mac' => $tokens[3],
@@ -61,12 +62,27 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
                     }
                 }
             }
+           // print_r($devices);
+//            $client->request('GET', sprintf('http://%s/update_clients.asp', $host));
+//            if (preg_match('/wlListInfo_2g: \[(\[".*", ".*", ".*", ".*"\](, )?)*\]/s', $client->getResponse()->getContent(), $tokens)) {
+//                if (preg_match_all('/\["([^"]*)", "([^"]*)", "([^"]*)", "([^"]*)"\]/s', $tokens[1], $token)) {
+//                    foreach ($devices as $mac => $device) {
+//                        if (in_array($mac, $token[1])) {
+//                            $result[] = $device;
+//                        }
+//                    }
+//                }
+//            }
+//
+            $result = array_values($devices);
+//            print_r($result);
 
-            $output->writeln(sprintf('<comment>%d devices found</comment>', count($devices)));
-            if (count(count($devices))) {
+
+            $output->writeln(sprintf('<comment>%d devices found</comment>', count($result)));
+            if (count($result) && $api) {
 
                 $client->request('POST', $api,
-                    array(), array(), array('HTTP_CONTENT_TYPE' => 'application/json'), json_encode($devices));
+                    array(), array(), array('HTTP_CONTENT_TYPE' => 'application/json'), json_encode($result));
 
                 if ($client->getResponse()->getContent() == 'OK') {
                     $output->writeln('<info>Devices sent to intranet successfully</info>');
