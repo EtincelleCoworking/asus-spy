@@ -31,13 +31,18 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
         $api = $input->getArgument('api');
         $client = new Client();
 
-        $crawler = $client->request('GET', sprintf('http://%s/Main_Login.asp', $host));
+        $login_url = sprintf('http://%s/Main_Login.asp', $host);
+        $output->writeln(sprintf('<info>Fetching login page %s</info>', $login_url));
+        $client->followRedirects(true);
+        $crawler = $client->request('GET', $login_url);
 
         $form = $crawler->filter('form')->first()->form();
         $params = array('login_username' => $login, 'login_passwd' => $password);
         $params['login_authorization'] = base64_encode(sprintf('%s:%s', $params['login_username'], $params['login_passwd']));
         $params['next_page'] = 'index.asp';
+        $output->writeln('<info>Submitting login page</info>');
         $client->submit($form, $params);
+
 //        var_dump($client->getResponse());
 //        var_dump($client->getResponse()->getContent());
 
@@ -46,6 +51,7 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
         } else {
             $devices = array();
             $result = array();
+            $output->writeln('<info>Grabbing connected hosts</info>');
             $client->request('GET', sprintf('http://%s/update_networkmapd.asp', $host));
             if (preg_match("/^﻿fromNetworkmapd = '([^']+)'/", $client->getResponse()->getContent(), $tokens)) {
                 $items = explode('<0>', $tokens[1]);
