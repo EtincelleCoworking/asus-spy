@@ -68,20 +68,25 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
                     }
                 }
             }
-           // print_r($devices);
-//            $client->request('GET', sprintf('http://%s/update_clients.asp', $host));
-//            if (preg_match('/wlListInfo_2g: \[(\[".*", ".*", ".*", ".*"\](, )?)*\]/s', $client->getResponse()->getContent(), $tokens)) {
-//                if (preg_match_all('/\["([^"]*)", "([^"]*)", "([^"]*)", "([^"]*)"\]/s', $tokens[1], $token)) {
-//                    foreach ($devices as $mac => $device) {
-//                        if (in_array($mac, $token[1])) {
-//                            $result[] = $device;
-//                        }
-//                    }
-//                }
-//            }
-//
-            $result = array_values($devices);
-//            print_r($result);
+            // print_r($devices);
+            $client->request('GET', sprintf('http://%s/update_clients.asp', $host));
+            //echo $client->getResponse()->getContent();
+            foreach (array(2, 5) as $network) {
+                if (preg_match('/wlListInfo_' . $network . 'g: \[(\["[^"]*", "[^"]*", "[^"]*", "[^"]*"\](, )?)*\]/s', $client->getResponse()->getContent(), $tokens)) {
+                    if (preg_match_all('/\["([^"]*)", "([^"]*)", "([^"]*)", "([^"]*)"\]/s', $tokens[0], $token)) {
+                       // print_r($token);
+                        $output->writeln(sprintf('<info>' . $network . 'G: %s</info>', implode(', ', $token[1])));
+                        foreach ($devices as $mac => $device) {
+                            if (in_array($mac, $token[1])) {
+                                $result[] = $device;
+                            }
+                        }
+                    }
+                }
+            }
+
+            //$result = array_values($devices);
+            //print_r($result);
 
 
             $output->writeln(sprintf('<comment>%d devices found</comment>', count($result)));
