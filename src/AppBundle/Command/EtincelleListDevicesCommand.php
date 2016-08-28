@@ -53,41 +53,42 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
             $result = array();
             $output->writeln('<info>Grabbing connected hosts</info>');
             $client->request('GET', sprintf('http://%s/update_networkmapd.asp', $host));
-            if (preg_match("/^﻿fromNetworkmapd = '([^']+)'/", $client->getResponse()->getContent(), $tokens)) {
-                $items = explode('<0>', $tokens[1]);
+            if (preg_match("/fromNetworkmapd = '([^']+)'/", $client->getResponse()->getContent(), $tokens)) {
+                $items = preg_split('/<[0-9]>/', $tokens[1]);
+                //print_r($items);
                 array_shift($items);
                 foreach ($items as $item) {
                     if (preg_match('/^([^>]+)>([^>]+)>([^>]+)>([^>]+)>([^>]+)>([^>]+)>$/', $item, $tokens)) {
-                        //      print_r($tokens);
-                        $devices[$tokens[3]] = array(
-                            'name' => $tokens[1],
-//                        'ip' => $tokens[2],
-                            'mac' => $tokens[3],
-                            'lastSeen' => date('c'),
-                        );
+                        //print_r($tokens);
+                        $devices[$tokens[3]] = $tokens[1];
                     }
                 }
             }
-            // print_r($devices);
+            //print_r($devices);
             $client->request('GET', sprintf('http://%s/update_clients.asp', $host));
             //echo $client->getResponse()->getContent();
             foreach (array(2, 5) as $network) {
                 if (preg_match('/wlListInfo_' . $network . 'g: \[(\["[^"]*", "[^"]*", "[^"]*", "[^"]*"\](, )?)*\]/s', $client->getResponse()->getContent(), $tokens)) {
                     if (preg_match_all('/\["([^"]*)", "([^"]*)", "([^"]*)", "([^"]*)"\]/s', $tokens[0], $token)) {
-                       // print_r($token);
+                        // print_r($token);
                         $output->writeln(sprintf('<info>' . $network . 'G: %s</info>', implode(', ', $token[1])));
-                        foreach ($devices as $mac => $device) {
-                            if (in_array($mac, $token[1])) {
-                                $result[] = $device;
-                            }
+                        foreach ($token[1] as $mac) {
+                            $result[$mac] = array(
+                                'name' => isset($devices[$mac]) ? $devices[$mac] : '',
+                                'mac' => $mac,
+                                'lastSeen' => date('c'),
+                            );
                         }
                     }
                 }
             }
 
+            $output->writeln('<info>Disconnecting</info>');
+            $client->request('GET', sprintf('http://%s/Logout.asp', $host));
+
+
             //$result = array_values($devices);
             //print_r($result);
-
 
             $output->writeln(sprintf('<comment>%d devices found</comment>', count($result)));
             if (count($result) && $api) {
