@@ -17,108 +17,70 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
     {
         $this
             ->setName('etincelle:list-devices')
-            ->addOption('host', null, InputOption::VALUE_OPTIONAL, 'ASUS Router IP', 'router.asus.com')
-            ->addOption('username', null, InputOption::VALUE_OPTIONAL, 'Login', 'admin')
-            ->addOption('password', null, InputOption::VALUE_OPTIONAL, 'Password', 'admin')
             ->addArgument('api', InputArgument::REQUIRED, 'API Endpoint to post detected devices');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $host = $input->getOption('host');
-        $login = $input->getOption('username');
-        $password = $input->getOption('password');
         $api = $input->getArgument('api');
-        $client = new Client();
 
-        $login_url = sprintf('http://%s/Main_Login.asp', $host);
-        $output->writeln(sprintf('<info>Fetching login page %s</info>', $login_url));
-        $client->followRedirects(true);
-        $crawler = $client->request('GET', $login_url);
+        $result = array();
 
-        $form = $crawler->filter('form')->first()->form();
-        $params = array('login_username' => $login, 'login_passwd' => $password);
-        $params['login_authorization'] = base64_encode(sprintf('%s:%s', $params['login_username'], $params['login_passwd']));
-        $params['next_page'] = 'index.asp';
-        $output->writeln('<info>Submitting login page</info>');
-        $client->submit($form, $params);
-
-//        var_dump($client->getResponse());
-//        var_dump($client->getResponse()->getContent());
-
-        if (preg_match('/error_status/', $client->getResponse()->getContent())) {
-            $output->writeln(sprintf('<error>Access denied to %s (with username = %s, password = %s)</error>', $host, $login, $password));
-        } else {
-            $devices = array();
-            $result = array();
-            $output->writeln('<info>Grabbing connected hosts</info>');
-            $client->request('GET', sprintf('http://%s/update_networkmapd.asp', $host));
-            if (preg_match("/fromNetworkmapd = '([^']+)'/", $client->getResponse()->getContent(), $tokens)) {
-                $items = preg_split('/<[0-9]>/', $tokens[1]);
-                //print_r($items);
-                array_shift($items);
-                foreach ($items as $item) {
-                    if (preg_match('/^([^>]+)>([^>]+)>([^>]+)>([^>]+)>([^>]+)>([^>]+)>$/', $item, $tokens)) {
-                        //print_r($tokens);
-                        $devices[$tokens[3]] = $tokens[1];
-                    }
-                }
+        foreach (getIPs() as $ip) {
+            if ($ip != '127.0.0.1') {
+                $ipParts = explode('.', $ip);
+                array_pop($ipParts);
+                $range = implode('.', $ipParts) . '.0/24';
             }
-            //print_r($devices);
-            $client->request('GET', sprintf('http://%s/update_clients.asp', $host));
-            //echo $client->getResponse()->getContent();
-            foreach (array(2, 5) as $network) {
-                if (preg_match('/wlListInfo_' . $network . 'g: \[(\["[^"]*", "[^"]*", "[^"]*", "[^"]*"\](, )?)*\]/s', $client->getResponse()->getContent(), $tokens)) {
-                    if (preg_match_all('/\["([^"]*)", "([^"]*)", "([^"]*)", "([^"]*)"\]/s', $tokens[0], $token)) {
-                        // print_r($token);
-                        $output->writeln(sprintf('<info>' . $network . 'G: %s</info>', implode(', ', $token[1])));
-                        foreach ($token[1] as $mac) {
-                            $result[$mac] = array(
-                                'name' => isset($devices[$mac]) ? $devices[$mac] : '',
-                                'mac' => $mac,
-                                'lastSeen' => date('c'),
-                            );
-                        }
-                    }
-                }
-            }
-            if (preg_match('/fromNetworkmapd: \'([^\']+)\'/s', $client->getResponse()->getContent(), $tokens)) {
-                $items = preg_split('/<[0-9]>/', $tokens[1]);
-                //print_r($items);
-                array_shift($items);
-                foreach ($items as $item) {
-                    if (preg_match('/^([^>]+)>([^>]+)>([^>]+)>([^>]+)>([^>]+)>([^>]+)>$/', $item, $tokens)) {
-                        //print_r($tokens);
-                        $mac = $tokens[3];
-                        $output->writeln(sprintf('<info>Network: %s - %s</info>', $mac, $token[1]));
+        }
+
+        $output->writeln(sprintf('<info>Inspecting %s</info>', $range));
+        exec('nmap -sP ' . $range, $nmap);
+        while (count($nmap) > 0) {
+            $line = array_shift($nmap);
+            if (preg_match('/Nmap scan report for (.+) \(([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\)/', $line, $tokens)) {
+                $ip = $tokens[2];
+                $name = $tokens[1];
+                $line = array_shift($nmap);
+                if (preg_match('/Host is up \(.+s latency\)\./', $line, $tokens)) {
+                    $line = array_shift($nmap);
+                    if (preg_match('/MAC Address: ([A-Z0-9]{2}:[A-Z0-9]{2}:[A-Z0-9]{2}:[A-Z0-9]{2}:[A-Z0-9]{2}:[A-Z0-9]{2}) \((.+)\)/', $line, $tokens)) {
+                        $mac = $tokens[1];
+                        $brand = $tokens[2];
+                        // var_dump(array($ip, $name, $mac, $brand));
+
                         $result[$mac] = array(
-                            'name' => $tokens[1],
+                            'name' => $name,
+                            'brand' => $brand,
                             'mac' => $mac,
+                            'ip' => $ip,
                             'lastSeen' => date('c'),
                         );
                     }
                 }
             }
-
-            $output->writeln('<info>Disconnecting</info>');
-            $client->request('GET', sprintf('http://%s/Logout.asp', $host));
-
-
-            //$result = array_values($devices);
-            //print_r($result);
-
-            $output->writeln(sprintf('<comment>%d devices found</comment>', count($result)));
-            if (count($result) && $api) {
-
-                $client->request('POST', $api,
-                    array(), array(), array('HTTP_CONTENT_TYPE' => 'application/json'), json_encode($result));
-
-                if ($client->getResponse()->getContent() == 'OK') {
-                    $output->writeln('<info>Devices sent to intranet successfully</info>');
-                }
-            }
         }
 
+
+        print_r($result);
+
+        $output->writeln(sprintf('<comment>%d devices found</comment>', count($result)));
+        if (count($result) && $api) {
+
+            $client = new Client();
+            $client->request('POST', $api,
+                array(), array(), array('HTTP_CONTENT_TYPE' => 'application/json'), json_encode($result));
+
+            if ($client->getResponse()->getContent() == 'OK') {
+                $output->writeln('<info>Devices sent to intranet successfully</info>');
+            }
+        }
     }
 
+}
+
+function getIPs()
+{
+    preg_match_all('/inet adr:([^ ]+)/m', `ifconfig`, $ips);
+    return $ips[1];
 }
