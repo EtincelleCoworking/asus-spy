@@ -82,6 +82,23 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
                     }
                 }
             }
+            if (preg_match('/fromNetworkmapd: \'([^\']+)\'/s', $client->getResponse()->getContent(), $tokens)) {
+                $items = preg_split('/<[0-9]>/', $tokens[1]);
+                //print_r($items);
+                array_shift($items);
+                foreach ($items as $item) {
+                    if (preg_match('/^([^>]+)>([^>]+)>([^>]+)>([^>]+)>([^>]+)>([^>]+)>$/', $item, $tokens)) {
+                        //print_r($tokens);
+                        $mac = $tokens[3];
+                        $output->writeln(sprintf('<info>Network: %s - %s</info>', $mac, $token[1]));
+                        $result[$mac] = array(
+                            'name' => $tokens[1],
+                            'mac' => $mac,
+                            'lastSeen' => date('c'),
+                        );
+                    }
+                }
+            }
 
             $output->writeln('<info>Disconnecting</info>');
             $client->request('GET', sprintf('http://%s/Logout.asp', $host));
