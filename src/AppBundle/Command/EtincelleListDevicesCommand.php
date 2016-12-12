@@ -100,7 +100,7 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
                         }
                     }else{
                         $output->writeln(sprintf('Unable to find Mac address for IP: %s', $device['ip']));
-
+                        unset($devices[$mac]);
                     }
                     // If there's a result and it's greater than 0, return the latency.
                 }
