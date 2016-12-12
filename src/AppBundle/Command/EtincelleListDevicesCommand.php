@@ -36,7 +36,7 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
         $params['next_page'] = 'index.asp';
         $output->writeln('<info>Submitting login page</info>');
         $client->submit($form, $params);
-        $result = array();
+        $devices = array();
         if (preg_match('/error_status/', $client->getResponse()->getContent())) {
             $output->writeln(sprintf('<error>Access denied to %s (with username = %s, password = %s)</error>', $host, $login, $password));
         } else {
@@ -49,32 +49,65 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
                 foreach ($items as $item) {
                     if (preg_match('/^([^>]+)>([^>]+)>([^>]+)>([^>]+)>([^>]+)>([^>]+)>$/', $item, $tokens)) {
                         //print_r($tokens);
-                        $devices[$tokens[3]] = $tokens[1];
+                        $devices[$tokens[3]] = array(
+                            'name' => $tokens[1],
+                            'brand' => '',
+                            'mac' => $tokens[3],
+                            'ip' => $tokens[2],
+                            'lastSeen' => date('c'),
+                        );
                     }
                 }
             }
-            //print_r($devices);
-            $client->request('GET', sprintf('http://%s/update_clients.asp', $host));
-            //echo $client->getResponse()->getContent();
-            foreach (array(2, 5) as $network) {
-                if (preg_match('/wlListInfo_' . $network . 'g: \[(\["[^"]*", "[^"]*", "[^"]*", "[^"]*"\](, )?)*\]/s', $client->getResponse()->getContent(), $tokens)) {
-                    if (preg_match_all('/\["([^"]*)", "([^"]*)", "([^"]*)", "([^"]*)"\]/s', $tokens[0], $token)) {
-                        // print_r($token);
-                        $output->writeln(sprintf('<info>' . $network . 'G: %s</info>', implode(', ', $token[1])));
-                        foreach ($token[1] as $mac) {
-                            $result[$mac] = array(
-                                'name' => isset($devices[$mac]) ? $devices[$mac] : '',
-                                'mac' => $mac,
-                                'lastSeen' => date('c'),
-                            );
-                        }
+            print_r($devices);
+            foreach ($devices as $mac => $device) {
+                $cmd_result = array();
+                $cmd = sprintf('ping -c 1 -W 1 "%s"', $device['ip']);
+                exec($cmd, $cmd_result, $cmd_status);
+                $is_live = false;
+
+                $cmd_result = array_values(array_filter($cmd_result));
+                $cmd_result = implode($cmd_result, '');
+                // If the result line in the output is not empty, parse it.
+                if ($cmd_result) {
+                    // Search for a 'time' value in the result line.
+                    if (preg_match("/1 packets transmitted, 1 received/", $cmd_result, $matches)) {
+                        $is_live = true;
                     }
+                    // If there's a result and it's greater than 0, return the latency.
+                }
+
+
+                if (!$is_live) {
+                    $output->writeln(sprintf('Host %s is dead', $device['ip']));
+                    unset($devices[$mac]);
+                } else {
+                    $output->writeln(sprintf('Host %s is live', $device['ip']));
                 }
             }
+            /*
+             $client->request('GET', sprintf('http://%s/update_clients.asp', $host));
+             //echo $client->getResponse()->getContent();
+             foreach (array(2, 5) as $network) {
+                 if (preg_match('/wlListInfo_' . $network . 'g: \[(\["[^"]*", "[^"]*", "[^"]*", "[^"]*"\](, )?)*\]/s', $client->getResponse()->getContent(), $tokens)) {
+                     if (preg_match_all('/\["([^"]*)", "([^"]*)", "([^"]*)", "([^"]*)"\]/s', $tokens[0], $token)) {
+                         // print_r($token);
+                         $output->writeln(sprintf('<info>' . $network . 'G: %s</info>', implode(', ', $token[1])));
+                         foreach ($token[1] as $mac) {
+                             $result[$mac] = array(
+                                 'name' => isset($devices[$mac]) ? $devices[$mac] : '',
+                                 'mac' => $mac,
+                                 'lastSeen' => date('c'),
+                             );
+                         }
+                     }
+                 }
+             }
+            */
             $output->writeln('<info>Disconnecting</info>');
             $client->request('GET', sprintf('http://%s/Logout.asp', $host));
         }
-        return $result;
+        return $devices;
     }
 
     protected function getDevicesFromNmap(OutputInterface $output)
@@ -125,11 +158,17 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $result_router = $this->getDevicesFromAsusRouter($input->getOption('host'), $input->getOption('username'), $input->getOption('password'), $output);
-        print_r($result_router);
-        $result_nmap = $this->getDevicesFromNmap($output);
-        print_r($result_nmap);
-        $result = array_merge($result_nmap, $result_router);
+//        $result_router = $this->getDevicesFromAsusRouter($input->getOption('host'), $input->getOption('username'), $input->getOption('password'), $output);
+//        print_r($result_router);
+//        $result_nmap = $this->getDevicesFromNmap($output);
+//        print_r($result_nmap);
+//        $result = $result_router;
+//        foreach ($result_nmap as $mac => $data) {
+//            foreach ($data as $k => $v) {
+//                $result[$mac][$k] = $v;
+//            }
+//        }
+        $result = $this->getDevicesFromNmap($output);
         print_r($result);
 
         $output->writeln(sprintf('<comment>%d devices found</comment>', count($result)));
