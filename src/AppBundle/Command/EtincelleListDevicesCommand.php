@@ -63,6 +63,8 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
             foreach ($devices as $mac => $device) {
                 $cmd_result = array();
                 $cmd = sprintf('arp -an "%s"', $device['ip']);
+                $output->writeln(sprintf('CMD: %s', $cmd));
+
                 exec($cmd, $cmd_result, $cmd_status);
 
                 $cmd_result = array_values(array_filter($cmd_result));
@@ -99,7 +101,7 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
                             unset($devices[$mac]);
                         }
                     }else{
-                        $output->writeln(sprintf('Unable to find Mac address for IP: %s', $device['ip']));
+                        $output->writeln(sprintf('Unable to find Mac address for IP: %s - %s', $device['ip'], $cmd_result));
                         unset($devices[$mac]);
                     }
                     // If there's a result and it's greater than 0, return the latency.
