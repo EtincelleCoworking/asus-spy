@@ -182,9 +182,9 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $result_asus = $this->getDevicesFromAsusRouter($input->getOption('host'), $input->getOption('username'), $input->getOption('password'), $output);
-        print_r($result_asus);
-        $result = array();
+//        $result_asus = $this->getDevicesFromAsusRouter($input->getOption('host'), $input->getOption('username'), $input->getOption('password'), $output);
+//        print_r($result_asus);
+//        $result = array();
 //                $output->writeln(sprintf('CMD: %s', $cmd));
 //
 //        exec('arp-scan -l', $cmd_result, $cmd_status);
@@ -207,14 +207,14 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
 //            }
 //        }
 
-        $result_nmap = $this->getDevicesFromNmap($output);
-        print_r($result_nmap);
-        $result = $result_asus;
-        foreach ($result_nmap as $mac => $data) {
-            foreach ($data as $k => $v) {
-                $result[$mac][$k] = $v;
-            }
-        }
+//        $result_nmap = $this->getDevicesFromNmap($output);
+//        print_r($result_nmap);
+//        $result = $result_asus;
+//        foreach ($result_nmap as $mac => $data) {
+//            foreach ($data as $k => $v) {
+//                $result[$mac][$k] = $v;
+//            }
+//        }
         $result = $this->getDevicesFromNmap($output);
         print_r($result);
 
