@@ -49,7 +49,7 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
                 foreach ($items as $item) {
                     if (preg_match('/^([^>]+)>([^>]+)>([^>]+)>([^>]+)>([^>]+)>([^>]+)>$/', $item, $tokens)) {
                         //print_r($tokens);
-                        $devices[$tokens[3]] = array(
+                        $devices[strtolower($tokens[3])] = array(
                             'name' => $tokens[1],
                             'brand' => '',
                             'mac' => $tokens[3],
@@ -59,56 +59,56 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
                     }
                 }
             }
-            print_r($devices);
-            foreach ($devices as $mac => $device) {
-                $cmd_result = array();
-                $cmd = sprintf('arp -an "%s"', $device['ip']);
-                $output->writeln(sprintf('CMD: %s', $cmd));
-
-                exec($cmd, $cmd_result, $cmd_status);
-
-                $cmd_result = array_values(array_filter($cmd_result));
-                $cmd_result = implode($cmd_result, '');
-                // If the result line in the output is not empty, parse it.
-                if ($cmd_result) {
-                    if (preg_match(sprintf("/\\(%s\\) at ([a-e0-9]{2}(:[a-e0-9]{2}){5})/", $device['ip']), $cmd_result, $matches)) {
-                        if(strtolower($matches[1]) == strtolower($mac)){
-                            $cmd_result = array();
-                            $cmd = sprintf('ping -c 1 -W 1 "%s"', $device['ip']);
-                            exec($cmd, $cmd_result, $cmd_status);
-
-                            $is_live = false;
-
-                            $cmd_result = array_values(array_filter($cmd_result));
-                            $cmd_result = implode($cmd_result, '');
-                            // If the result line in the output is not empty, parse it.
-                            if ($cmd_result) {
-                                // Search for a 'time' value in the result line.
-                                if (preg_match("/1 packets transmitted, 1 received/", $cmd_result, $matches)) {
-                                    $is_live = true;
-                                }
-                            }
-
-
-                            if (!$is_live) {
-                                $output->writeln(sprintf('Host %s is dead', $device['ip']));
-                                unset($devices[$mac]);
-                            } else {
-                                $output->writeln(sprintf('Host %s is live', $device['ip']));
-                            }
-                        }else{
-                            $output->writeln(sprintf('IP/Mac mismatch (%s / %s) for IP: %s', strtolower($matches[1]), strtolower($mac), $device['ip']));
-                            unset($devices[$mac]);
-                        }
-                    }else{
-                        $output->writeln(sprintf('Unable to find Mac address for IP: %s - %s', $device['ip'], $cmd_result));
-                        unset($devices[$mac]);
-                    }
-                    // If there's a result and it's greater than 0, return the latency.
-                }
-
-
-            }
+//            print_r($devices);
+//            foreach ($devices as $mac => $device) {
+//                $cmd_result = array();
+//                $cmd = sprintf('arp -an "%s"', $device['ip']);
+//                $output->writeln(sprintf('CMD: %s', $cmd));
+//
+//                exec($cmd, $cmd_result, $cmd_status);
+//
+//                $cmd_result = array_values(array_filter($cmd_result));
+//                $cmd_result = implode($cmd_result, '');
+//                // If the result line in the output is not empty, parse it.
+//                if ($cmd_result) {
+//                    if (preg_match(sprintf("/\\(%s\\) at ([a-e0-9]{2}(:[a-e0-9]{2}){5})/", $device['ip']), $cmd_result, $matches)) {
+//                        if(strtolower($matches[1]) == strtolower($mac)){
+//                            $cmd_result = array();
+//                            $cmd = sprintf('ping -c 1 -W 1 "%s"', $device['ip']);
+//                            exec($cmd, $cmd_result, $cmd_status);
+//
+//                            $is_live = false;
+//
+//                            $cmd_result = array_values(array_filter($cmd_result));
+//                            $cmd_result = implode($cmd_result, '');
+//                            // If the result line in the output is not empty, parse it.
+//                            if ($cmd_result) {
+//                                // Search for a 'time' value in the result line.
+//                                if (preg_match("/1 packets transmitted, 1 received/", $cmd_result, $matches)) {
+//                                    $is_live = true;
+//                                }
+//                            }
+//
+//
+//                            if (!$is_live) {
+//                                $output->writeln(sprintf('Host %s is dead', $device['ip']));
+//                                unset($devices[$mac]);
+//                            } else {
+//                                $output->writeln(sprintf('Host %s is live', $device['ip']));
+//                            }
+//                        }else{
+//                            $output->writeln(sprintf('IP/Mac mismatch (%s / %s) for IP: %s', strtolower($matches[1]), strtolower($mac), $device['ip']));
+//                            unset($devices[$mac]);
+//                        }
+//                    }else{
+//                        $output->writeln(sprintf('Unable to find Mac address for IP: %s - %s', $device['ip'], $cmd_result));
+//                        unset($devices[$mac]);
+//                    }
+//                    // If there's a result and it's greater than 0, return the latency.
+//                }
+//
+//
+//            }
             /*
              $client->request('GET', sprintf('http://%s/update_clients.asp', $host));
              //echo $client->getResponse()->getContent();
@@ -182,17 +182,40 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $result_router = $this->getDevicesFromAsusRouter($input->getOption('host'), $input->getOption('username'), $input->getOption('password'), $output);
-        print_r($result_router);
+        $result_asus = $this->getDevicesFromAsusRouter($input->getOption('host'), $input->getOption('username'), $input->getOption('password'), $output);
+        print_r($result_asus);
+        $result = array();
+//                $output->writeln(sprintf('CMD: %s', $cmd));
+//
+//        exec('arp-scan -l', $cmd_result, $cmd_status);
+//        print_r($cmd_result);
+//        foreach ($cmd_result as $line) {
+//            if (preg_match('/^(\d+\.\d+\.\d+\.\d+)\s+([0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f]:[0-9a-f][0-9a-f])/', $line, $tokens)) {
+//                $_ip = $tokens[1];
+//                $_mac = $tokens[2];
+//                if (isset($result_asus[$_mac])) {
+//                    $result[$_mac] = $result_asus[$_mac];
+//                } else {
+//                    $result[$_mac] = array(
+//                        'name' => '',
+//                        'brand' => '',
+//                        'mac' => $_mac,
+//                        'ip' => $_ip,
+//                        'lastSeen' => date('c'),
+//                    );
+//                }
+//            }
+//        }
+
         $result_nmap = $this->getDevicesFromNmap($output);
         print_r($result_nmap);
-        $result = $result_router;
+        $result = $result_asus;
         foreach ($result_nmap as $mac => $data) {
             foreach ($data as $k => $v) {
                 $result[$mac][$k] = $v;
             }
         }
-//        $result = $this->getDevicesFromNmap($output);
+        $result = $this->getDevicesFromNmap($output);
         print_r($result);
 
         $output->writeln(sprintf('<comment>%d devices found</comment>', count($result)));
