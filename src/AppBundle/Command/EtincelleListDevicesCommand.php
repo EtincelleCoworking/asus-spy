@@ -152,11 +152,17 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
         $result = array();
         $output->writeln(sprintf('<info>Inspecting %s</info>', $range));
         exec('nmap -sP ' . $range, $nmap);
+        print_r($nmap);
         while (count($nmap) > 0) {
             $line = array_shift($nmap);
-            if (preg_match('/Nmap scan report for (.+) \(([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\)/', $line, $tokens)) {
-                $ip = $tokens[2];
-                $name = $tokens[1];
+            if (preg_match('/Nmap scan report for (.+)( \(([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\))?/', $line, $tokens)) {
+                if (isset($tokens[2])) {
+                    $ip = $tokens[2];
+                    $name = $tokens[1];
+                } else {
+                    $ip = $tokens[1];
+                    $name = '';
+                }
                 $line = array_shift($nmap);
                 if (preg_match('/Host is up \(.+s latency\)\./', $line, $tokens)) {
                     $line = array_shift($nmap);
@@ -172,8 +178,14 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
                             'ip' => $ip,
                             'lastSeen' => date('c'),
                         );
+                    } else {
+                        $output->writeln(sprintf('<info>No match for %s</info>', $line));
                     }
+                } else {
+                    $output->writeln(sprintf('<info>No match for %s</info>', $line));
                 }
+            } else {
+                $output->writeln(sprintf('<info>No match for %s</info>', $line));
             }
         }
         return $result;
