@@ -20,19 +20,19 @@ class EtincelleAgentCommand extends ContainerAwareCommand
 
     protected function getAgents(InputInterface $input)
     {
+        $url = sprintf('https://%s/api/1.0/monitoring/%s/%s/agents',
+            $input->getArgument('host'), $input->getArgument('location'), $input->getArgument('key'));
+        //printf("URL: %s\n", $url);
         $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, sprintf('https://%s/api/1.0/monitoring/agents', $input->getArgument('host')));
+        //curl_setopt($ch, CURLOPT_VERBOSE, true);
+        curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-            sprintf('LOCATION_SLUG: %s', $input->getArgument('location')),
-            sprintf('LOCATION_KEY: %s', $input->getArgument('key')),
-        ));
 
         $server_output = curl_exec($ch);
 
         curl_close($ch);
 
-        return json_decode($server_output);
+        return json_decode($server_output, true);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -54,11 +54,17 @@ class EtincelleAgentCommand extends ContainerAwareCommand
                 $agents[$ip] = $result;
             }
         }
+        $output->writeln('');
+        if(count($agents) == 0){
+            $output->writeln('Nothing to upload');
+            return true;
+        }
         if (!$this->upload($input, $agents)) {
-            $output->writeln('');
-            $output->writeln(sprintf('<error>An error occured when uploading data to %s', $input->getArgument('host')));
+            $output->writeln(sprintf('<error>An error occured when uploading data to %s</error>', $input->getArgument('host')));
             return false;
         }
+        $output->writeln(sprintf('<info>Upload Success to %s</info>', $input->getArgument('host')));
+
         return true;
     }
 
@@ -66,15 +72,16 @@ class EtincelleAgentCommand extends ContainerAwareCommand
     {
         $data_string = json_encode($agents);
         $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, sprintf('https://%s/api/1.0/monitoring/agents', $input->getArgument('host')));
+        //curl_setopt($ch, CURLOPT_VERBOSE, true);
+        $url = sprintf('https://%s/api/1.0/monitoring/%s/%s/agents',
+            $input->getArgument('host'), $input->getArgument('location'), $input->getArgument('key'));
+        curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
         curl_setopt($ch, CURLOPT_POSTFIELDS, $data_string);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array(
             'Content-Type: application/json',
             'Content-Length: ' . strlen($data_string),
-            sprintf('LOCATION_SLUG: %s', $input->getArgument('location')),
-            sprintf('LOCATION_KEY: %s', $input->getArgument('key')),
         ));
         $server_output = curl_exec($ch);
         curl_close($ch);
