@@ -8,7 +8,6 @@ class Oki extends Agent
 
     protected function getInkStatus($ip)
     {
-
         $ctx = stream_context_create(array('http' =>
             array(
                 'timeout' => self::TIMEOUT_IN_SEC,
@@ -21,7 +20,7 @@ class Oki extends Agent
         $result = array();
         if (preg_match_all('/<input type="hidden" name="AVAILABEL([A-Z]+)TONER" value="(\d+)">/', $content, $tokens)) {
             foreach ($tokens[1] as $index => $color) {
-                $result[$color] = $tokens[2][$index];
+                $result[strtolower($color)] = $tokens[2][$index];
             }
         }
         return $result;
@@ -29,7 +28,6 @@ class Oki extends Agent
 
     function fire()
     {
-        $result = $this->getInkStatus($this->getParameter('ip'));
-        return $result;
+        return $this->getInkStatus($this->getParameter('ip'));
     }
 }
