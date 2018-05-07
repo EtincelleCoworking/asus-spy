@@ -46,8 +46,13 @@ class EtincelleAgentCommand extends ContainerAwareCommand
         foreach ($agents as $ip => $className) {
             $className = "AppBundle\\Agent\\$className";
             $agent = new $className(array('ip' => $ip));
-            $result = $agent->fire();
-            $output->writeln(sprintf("IP: %15s - %s", $ip, ($result === false) ? '<error>OFFLINE</error>' : '<info>ONLINE</info>'));
+            try {
+                $result = $agent->fire();
+                $output->writeln(sprintf("IP: %15s - %s", $ip, ($result === false) ? '<error>OFFLINE</error>' : '<info>ONLINE</info>'));
+            } catch (\Exception $e) {
+                $output->writeln(sprintf("IP: %15s - <error>%s</error>", $ip, $e->getMessage()));
+                $result = null;
+            }
             if ($result === false) {
                 unset($agents[$ip]);
             } else {
@@ -55,7 +60,7 @@ class EtincelleAgentCommand extends ContainerAwareCommand
             }
         }
         $output->writeln('');
-        if(count($agents) == 0){
+        if (count($agents) == 0) {
             $output->writeln('Nothing to upload');
             return true;
         }

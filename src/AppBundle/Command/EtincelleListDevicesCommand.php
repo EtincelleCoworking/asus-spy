@@ -10,7 +10,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 use Goutte\Client;
 
-
 class EtincelleListDevicesCommand extends ContainerAwareCommand
 {
     protected function configure()
@@ -246,8 +245,13 @@ class EtincelleListDevicesCommand extends ContainerAwareCommand
 
     protected function getIPs()
     {
-        preg_match_all('/inet add?r:([^ ]+)/m', `ifconfig`, $ips);
-        return $ips[1];
+        if(preg_match_all('/inet add?r:([^ ]+)/m', `ifconfig`, $ips)){
+
+            return $ips[1];
+        }
+        if(preg_match_all('/inet (192\.[^ ]+)/m', `ifconfig`, $ips)){
+            return $ips[1];
+        }
     }
 }
 
