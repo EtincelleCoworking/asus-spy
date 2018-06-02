@@ -116,11 +116,14 @@ class EtincelleListDevicesOpnSenseCommand extends ContainerAwareCommand
         //print_r($result);
 
         $opnsense_data = $this->getDevicesFromOpnSense($input->getOption('firewall_ip'), $input->getOption('opnsense_api_key'), $input->getOption('opnsense_api_secret'), $output);
+        print_r($opnsense_data);
         foreach ($opnsense_data as $mac => $item) {
+            $mac = strtoupper($mac);
             if (isset($result[$mac])) {
-                $result[$mac]['email'] = $item['email'];
+                $resulwt[$mac]['email'] = $item['email'];
             }
         }
+
         //print_r($result);
         $output->writeln(sprintf('<comment>%d devices found</comment>', count($result)));
         $api = $input->getArgument('api');
@@ -135,6 +138,18 @@ class EtincelleListDevicesOpnSenseCommand extends ContainerAwareCommand
             } else {
                 $output->writeln($client->getResponse()->getContent());
             }
+        }
+    }
+
+
+    protected function getIPs()
+    {
+        if (preg_match_all('/inet add?r:([^ ]+)/m', `ifconfig`, $ips)) {
+
+            return $ips[1];
+        }
+        if (preg_match_all('/inet (192\.[^ ]+)/m', `ifconfig`, $ips)) {
+            return $ips[1];
         }
     }
 }

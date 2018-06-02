@@ -51,7 +51,7 @@ class EtincelleAgentCommand extends ContainerAwareCommand
                 $output->writeln(sprintf("IP: %15s - %s", $ip, ($result === false) ? '<error>OFFLINE</error>' : '<info>ONLINE</info>'));
             } catch (\Exception $e) {
                 $output->writeln(sprintf("IP: %15s - <error>%s</error>", $ip, $e->getMessage()));
-                $result = null;
+                $result = false;
             }
             if ($result === false) {
                 unset($agents[$ip]);
