@@ -23,7 +23,8 @@
         "sensio/framework-extra-bundle": "^3.0.2",
         "incenteev/composer-parameter-handler": "^2.0",
         "symfony/browser-kit": "^3.1",
-        "fabpot/goutte": "^3.1"
+        "fabpot/goutte": "^3.1",
+      "ext-json": "*"
     },
     "require-dev": {
         "sensio/generator-bundle": "^3.0",

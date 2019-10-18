@@ -120,7 +120,7 @@ class EtincelleListDevicesOpnSenseCommand extends ContainerAwareCommand
         foreach ($opnsense_data as $mac => $item) {
             $mac = strtoupper($mac);
             if (isset($result[$mac])) {
-                $resulwt[$mac]['email'] = $item['email'];
+                $result[$mac]['email'] = $item['email'];
             }
         }
 
@@ -132,6 +132,12 @@ class EtincelleListDevicesOpnSenseCommand extends ContainerAwareCommand
             $client = new Client();
             $client->request('POST', $api,
                 array(), array(), array('HTTP_CONTENT_TYPE' => 'application/json'), json_encode($result));
+
+
+            $output->writeln("JSON posted to API\n");
+            $output->writeln(json_encode($result));
+            $output->writeln('');
+
 
             if ($client->getResponse()->getContent() == 'OK') {
                 $output->writeln('<info>Devices sent to intranet successfully</info>');
